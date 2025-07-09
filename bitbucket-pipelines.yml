@@ -1,0 +1,156 @@
+image: ghcr.io/cirruslabs/flutter:latest
+
+pipelines:
+  branches:   
+    master:          
+    - step:
+        size: 4x
+        runs-on: 
+          - 'self.hosted'
+          - 'linux'
+        name: Build and Upload Flutter APK
+        script:
+          - echo "Setting up Flutter..."
+          - flutter pub get
+          # Build APK or AAB
+          - cp .env-example .env
+          - java -version
+          - apt update
+          - apt install openjdk-17-jdk -y
+          - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          - export PATH=$JAVA_HOME/bin:$PATH
+          - java -version
+          - flutter --version
+          - dart run build_runner build
+          - flutter build apk --release
+          # or for AAB: flutter build appbundle --release
+          - ls -la
+          - pwd
+          # Define paths
+          - APK_PATH=build/app/outputs/flutter-apk/app-release.apk
+          - ARTIFACT_NAME="$BITBUCKET_REPO_SLUG"-latest.apk
+          
+          # Upload to Nexus
+          - echo "Uploading to Nexus..."
+          - curl -u "admin:$NEXUS_PASSWORD" --upload-file "$APK_PATH" "http://79.143.20.158:8081/repository/flutter-apks/$ARTIFACT_NAME"
+        after-script:
+           - >
+            if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then
+              curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-658249163\", \"text\": \"Bitbucket - ✅ success Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+              
+            else
+              curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-658249163\", \"text\": \"Bitbucket - ❌ failed Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+            fi    
+            
+            
+#----------------------###--DEV------------------------------------
+    dev-branch:
+    - parallel:          
+      - step:
+          size: 4x
+          runs-on: 
+            - 'self.hosted'
+            - 'linux'
+          name: Build and Upload Flutter APK
+          script:
+            - echo "Setting up Flutter..."
+          # Build APK or AAB
+            #- echo $ENV_DEV | base64 -d > .env
+            - cat .env
+            - java -version
+            - apt update
+            - apt install openjdk-17-jdk -y
+            - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            - export PATH=$JAVA_HOME/bin:$PATH
+            - java -version
+            - flutter --version
+            - dart --version
+            #- echo $google_service | base64 -d > android/app/google-services.json
+            #- ls -la android/app/
+            - dart run build_runner build --delete-conflicting-outputs
+            - flutter build apk --release
+            - java -version
+          # or for AAB: flutter build appbundle --release
+            - ls -la
+            - pwd
+          # Define paths
+            - APK_PATH=build/app/outputs/flutter-apk/app-release.apk
+            - ARTIFACT_NAME="$BITBUCKET_REPO_SLUG"-dev-latest.apk
+          
+          # Upload to Nexus
+            - echo "Uploading to Nexus..."
+            - curl -u "admin:$NEXUS_PASSWORD" --upload-file "$APK_PATH" "http://79.143.20.158:8081/repository/flutter-apks/$ARTIFACT_NAME"
+          after-script:
+             - >
+              if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then
+              curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-658249163\", \"text\": \"Bitbucket - ✅ success DEV APK Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+              
+              else
+                curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-6582491633\", \"text\": \"Bitbucket - ❌ failed DEV APK Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+              fi    
+
+   
+      - step:
+          runs-on:
+            - self.hosted
+            - macos
+            - office
+          name: Flutter Build ipa file
+          script:
+            # Decode and save cert + profile
+            - echo $CERT_P12 | base64 -d > cert.p12
+            - echo $PROVISIONING_PROFILE | base64 -d > profile.mobileprovision
+
+            # Import certificate
+            - security create-keychain -p "" build.keychain
+            - security import cert.p12 -k build.keychain -P "$certificate_password" -T /usr/bin/codesign
+            - security list-keychains -s build.keychain
+            - security default-keychain -s build.keychain
+            - security unlock-keychain -p "" build.keychain
+
+            # Copy provisioning profile
+            - mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            - cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+            # Build Flutter app
+            - flutter pub get
+            - flutter clean
+            - flutter build ipa --export-options-plist=test/ExportOptions.plist --build-number=$BITBUCKET_BUILD_NUMBER
+
+            - ls -la build/ios/ipa
+            - ls -la ios/
+          artifacts:
+            - build/ios/ipa/*.ipa
+    - step:
+          name: Upload iOS App
+          runs-on:
+            - self.hosted
+            - macos
+          trigger: manual
+          deployment: Production
+          script:
+            - mkdir -p ~/.appstoreconnect/private_keys
+            - echo $privatekey | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_82S9NLU62W.p8
+            - chmod 600 ~/.appstoreconnect/private_keys/AuthKey_82S9NLU62W.p8
+            - cat ~/.appstoreconnect/private_keys/AuthKey_82S9NLU62W.p8
+            - xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey "$apikey" --apiIssuer "$issuerid"
+          after-script:
+           - >
+            if [ "$BITBUCKET_EXIT_CODE" = "0" ]; then
+              curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-658249163\", \"text\": \"Bitbucket - ✅ success DEV iOS Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+              
+            else
+              curl -X POST -H "Content-Type: application/json" -d "{\"chat_id\": \"-6582491633\", \"text\": \"Bitbucket - ❌ failed DEV iOS Build $BITBUCKET_REPO_SLUG.v1.$BITBUCKET_BUILD_NUMBER\"}" https://api.telegram.org/bot5966184085:AAFyXnztITcN1q9NNmNtTbEwuNNRL2NL8Hg/sendMessage
+            fi    
+
+
+
+
+
+
+definitions:
+ # caches:
+  #  bundler: vendor/bundle
+  services:
+    docker:
+      memory: 20000

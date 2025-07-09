@@ -1,0 +1,84 @@
+name: tms
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  dio: any
+  permission_handler: any
+  get_it: any
+  hive_generator: any
+  hive: any
+  hive_flutter: any
+  flutter_bloc: any
+  bloc: any
+  flutter_svg: any
+  dotenv: ^4.2.0
+  flutter_dotenv: ^5.2.1
+  freezed: ^2.3.2
+  web_socket_channel: ^2.4.0
+  uuid: ^4.5.1
+  intl: ^0.20.2
+  overlay_support: ^2.1.0
+  photo_view: ^0.14.0
+  sms_autofill: any
+  mask_text_input_formatter: any
+  # yandex_mapkit: ^4.1.0
+  yandex_maps_mapkit: ^4.11.0-beta
+  geolocator: ^11.1.0
+  image_picker: ^1.0.7
+  http: ^1.2.0
+  root_checker_plus: ^0.0.4
+  rxdart: ^0.28.0
+  shared_preferences: ^2.2.3
+  sentry_flutter: ^8.14.1
+  url_launcher: ^6.0.0
+  json_annotation: ^4.9.0
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.4
+  equatable: ^2.0.5
+  flutter_date_pickers: ^0.4.3
+  flutter_localizations:
+    sdk: flutter
+  freezed_annotation: ^2.4.4
+  mocktail: ^1.0.4
+  lottie: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  mockito: ^5.4.4
+  bloc_test: ^9.1.7 
+  hive_test: any
+  build_runner: ^2.4.14
+  flutter_lints: ^5.0.0
+  json_serializable: ^6.9.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/images/
+    - assets/icons/
+  fonts:
+    - family: "SF-Pro"
+      fonts:
+        - asset: assets/fonts/SF-Pro-Display-Bold.otf
+          weight: 700
+        - asset: assets/fonts/SF-Pro-Display-Semibold.otf
+          weight: 600
+        - asset: assets/fonts/SF-Pro-Display-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SF-Pro-Display-Regular.otf
+          weight: 400
