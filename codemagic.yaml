@@ -18,7 +18,7 @@ workflows:
 
       - name: Flutter build ipa and automatic versioning
         script: |
-          flutter build ipa --release
+          flutter build ipa --export-options-plist=test/ExportOptions.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
