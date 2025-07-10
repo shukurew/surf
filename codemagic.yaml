@@ -1,0 +1,41 @@
+workflows:
+  ios-release-workflow:
+    name: iOS Release Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      vars:
+        BUNDLE_ID: "kz.netcore.tms"
+      groups:
+        - signing_credentials
+    triggering:
+      events:
+        - push
+    scripts:
+      - name: Install dependencies
+        script: |
+          flutter pub get
+
+      - name: Set up code signing
+        script: |
+          echo $CERTIFICATE_BASE64 | base64 --decode > signing.p12
+          echo $PROVISIONING_PROFILE_BASE64 | base64 --decode > surv.mobileprovision
+
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import signing.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(security cms -D -i surv.mobileprovision | plutil -extract UUID raw -)
+          cp surv.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=1.0.0 \
+            --build-number=1
+
+    artifacts:
+      - build/ios/ipa/*.ipa
