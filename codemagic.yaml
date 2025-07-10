@@ -5,6 +5,9 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: kz.netcore.tms
       groups:
         - app_store_credentials
         - signing_credentials # <- contains your provision + p12 via Codemagic UI
